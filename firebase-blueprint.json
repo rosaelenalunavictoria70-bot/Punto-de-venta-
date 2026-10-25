@@ -1,0 +1,456 @@
+{
+  "entities": {
+    "AdminRecord": {
+      "title": "AdminRecord",
+      "description": "Trusted administrator record for role verification.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the administrator.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified email address of the administrator.",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when admin record was created."
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "SalesUser": {
+      "title": "SalesUser",
+      "description": "Sales force user profile with role, credentials, and route assignment.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the organization owner who manages this sales user.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "sellerCode": {
+          "type": "string",
+          "description": "Unique code for the salesperson (e.g. VEN-001).",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "description": "Login username for the salesperson.",
+          "minLength": 3,
+          "maxLength": 64
+        },
+        "accessPin": {
+          "type": "string",
+          "description": "Access password or PIN for POS terminal login.",
+          "minLength": 4,
+          "maxLength": 64
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Full name of the salesperson or supervisor.",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "description": "Role within the sales organization.",
+          "enum": ["admin", "supervisor", "vendedor"]
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number of the salesperson.",
+          "minLength": 6,
+          "maxLength": 30
+        },
+        "assignedZone": {
+          "type": "string",
+          "description": "Geographic zone or district assigned to the salesperson.",
+          "minLength": 2,
+          "maxLength": 150
+        },
+        "salesGoalSoles": {
+          "type": "number",
+          "description": "Daily sales target in Peruvian Soles (S/.)."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the salesperson account is active."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "sellerCode",
+        "username",
+        "accessPin",
+        "fullName",
+        "role",
+        "phone",
+        "assignedZone",
+        "salesGoalSoles",
+        "active",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CustomerRecord": {
+      "title": "CustomerRecord",
+      "description": "Customer record in the route database.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the owner/organization.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "code": {
+          "type": "string",
+          "description": "Unique customer code (e.g. CLI-001).",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Store or business name.",
+          "minLength": 2,
+          "maxLength": 150
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Contact or store owner full name.",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "documentType": {
+          "type": "string",
+          "description": "Identification document type.",
+          "enum": ["DNI", "RUC"]
+        },
+        "documentNumber": {
+          "type": "string",
+          "description": "DNI or RUC number.",
+          "minLength": 6,
+          "maxLength": 20
+        },
+        "phone": {
+          "type": "string",
+          "description": "Customer WhatsApp or phone number.",
+          "minLength": 6,
+          "maxLength": 30
+        },
+        "address": {
+          "type": "string",
+          "description": "Delivery street address.",
+          "minLength": 3,
+          "maxLength": 250
+        },
+        "district": {
+          "type": "string",
+          "description": "District and city.",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "reference": {
+          "type": "string",
+          "description": "Address landmark or reference.",
+          "minLength": 0,
+          "maxLength": 250
+        },
+        "routeDay": {
+          "type": "string",
+          "description": "Scheduled route day from Monday to Saturday.",
+          "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+        },
+        "notes": {
+          "type": "string",
+          "description": "Delivery or payment notes.",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "visitStatus": {
+          "type": "string",
+          "description": "Current route visit status.",
+          "enum": ["pending", "visited_order", "visited_no_order", "absent"]
+        },
+        "assignedSellerCode": {
+          "type": "string",
+          "description": "Code of the assigned salesperson.",
+          "minLength": 0,
+          "maxLength": 32
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "code",
+        "name",
+        "ownerName",
+        "documentType",
+        "documentNumber",
+        "phone",
+        "address",
+        "district",
+        "reference",
+        "routeDay",
+        "notes",
+        "visitStatus",
+        "assignedSellerCode",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ProductRecord": {
+      "title": "ProductRecord",
+      "description": "Product catalog item with code, unit price in Soles, and stock.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the owner/organization.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "code": {
+          "type": "string",
+          "description": "Unique product code (e.g. BEB-001).",
+          "minLength": 2,
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Product name and presentation.",
+          "minLength": 2,
+          "maxLength": 180
+        },
+        "category": {
+          "type": "string",
+          "description": "Product category.",
+          "enum": [
+            "Bebidas",
+            "Abarrotes",
+            "Lácteos",
+            "Limpieza",
+            "Snacks y Golosinas",
+            "Cuidado Personal",
+            "Licores",
+            "Otros"
+          ]
+        },
+        "unit": {
+          "type": "string",
+          "description": "Unit of measure.",
+          "enum": ["Caja", "Fardo", "Paquete", "Saco", "Unidad", "Docena"]
+        },
+        "price": {
+          "type": "number",
+          "description": "Unit price in Peruvian Soles (S/.)."
+        },
+        "stock": {
+          "type": "number",
+          "description": "Available warehouse stock."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the product is active for sale."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "code",
+        "name",
+        "category",
+        "unit",
+        "price",
+        "stock",
+        "active",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderRecord": {
+      "title": "OrderRecord",
+      "description": "Sales order and thermal ticket record.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the authenticated user or organization owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "orderNumber": {
+          "type": "string",
+          "description": "Correlative ticket number (e.g. PED-2026-0041).",
+          "minLength": 3,
+          "maxLength": 40
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Customer ID reference.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerCode": {
+          "type": "string",
+          "description": "Customer code (e.g. CLI-001).",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Store or business name.",
+          "minLength": 2,
+          "maxLength": 150
+        },
+        "customerAddress": {
+          "type": "string",
+          "description": "Customer delivery address.",
+          "minLength": 3,
+          "maxLength": 250
+        },
+        "customerPhone": {
+          "type": "string",
+          "description": "Customer phone number.",
+          "minLength": 6,
+          "maxLength": 30
+        },
+        "routeDay": {
+          "type": "string",
+          "description": "Route day of the order.",
+          "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+        },
+        "itemsSummary": {
+          "type": "string",
+          "description": "Serialized summary of order items for ticket display.",
+          "minLength": 2,
+          "maxLength": 4000
+        },
+        "total": {
+          "type": "number",
+          "description": "Total amount in Soles (S/.) to collect on delivery."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Agreed payment method.",
+          "minLength": 3,
+          "maxLength": 80
+        },
+        "sellerCode": {
+          "type": "string",
+          "description": "Code of the salesperson who took the order.",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "sellerName": {
+          "type": "string",
+          "description": "Name of the salesperson who took the order.",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "status": {
+          "type": "string",
+          "description": "Delivery and collection status.",
+          "enum": ["pendiente_entrega", "entregado_y_cobrado", "cancelado"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation server timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update server timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "orderNumber",
+        "customerId",
+        "customerCode",
+        "customerName",
+        "customerAddress",
+        "customerPhone",
+        "routeDay",
+        "itemsSummary",
+        "total",
+        "paymentMethod",
+        "sellerCode",
+        "sellerName",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminRecord" },
+      "description": "Administrator registry for RBAC verification."
+    },
+    "/sales_users/{salesUserId}": {
+      "schema": { "$ref": "#/entities/SalesUser" },
+      "description": "Sales force user accounts and credentials managed by organization owner."
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/CustomerRecord" },
+      "description": "Customer database records with codes and route day schedule."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/ProductRecord" },
+      "description": "Product catalog records with codes, units, prices in Soles, and stock."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/OrderRecord" },
+      "description": "Point of sale orders and tickets synchronized with the cloud."
+    }
+  }
+}

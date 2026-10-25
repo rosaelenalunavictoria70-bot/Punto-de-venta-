@@ -1,0 +1,304 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Pillar 4.1: Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'rosaelenalunavictoria70@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    // Entity Validation Blueprints (Pillar 2)
+    function isValidAdminRecord(data) {
+      return data.keys().hasAll(['uid', 'email', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'email', 'createdAt'])
+        && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128 && data.uid.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && data.createdAt is timestamp;
+    }
+
+    function isValidSalesUser(data) {
+      return data.keys().hasAll([
+          'ownerId', 'sellerCode', 'username', 'accessPin', 'fullName',
+          'role', 'phone', 'assignedZone', 'salesGoalSoles', 'active',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'sellerCode', 'username', 'accessPin', 'fullName',
+          'role', 'phone', 'assignedZone', 'salesGoalSoles', 'active',
+          'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.sellerCode is string && data.sellerCode.size() >= 2 && data.sellerCode.size() <= 32 && data.sellerCode.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.username is string && data.username.size() >= 3 && data.username.size() <= 64
+        && data.accessPin is string && data.accessPin.size() >= 4 && data.accessPin.size() <= 64
+        && data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 120
+        && data.role is string && (data.role == 'admin' || data.role == 'supervisor' || data.role == 'vendedor')
+        && data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 30
+        && data.assignedZone is string && data.assignedZone.size() >= 2 && data.assignedZone.size() <= 150
+        && (data.salesGoalSoles is int || data.salesGoalSoles is float) && data.salesGoalSoles >= 0
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomerRecord(data) {
+      return data.keys().hasAll([
+          'ownerId', 'code', 'name', 'ownerName', 'documentType',
+          'documentNumber', 'phone', 'address', 'district', 'reference',
+          'routeDay', 'notes', 'visitStatus', 'assignedSellerCode',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'code', 'name', 'ownerName', 'documentType',
+          'documentNumber', 'phone', 'address', 'district', 'reference',
+          'routeDay', 'notes', 'visitStatus', 'assignedSellerCode',
+          'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.code is string && data.code.size() >= 2 && data.code.size() <= 32 && data.code.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 150
+        && data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 150
+        && data.documentType is string && (data.documentType == 'DNI' || data.documentType == 'RUC')
+        && data.documentNumber is string && data.documentNumber.size() >= 6 && data.documentNumber.size() <= 20
+        && data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 30
+        && data.address is string && data.address.size() >= 3 && data.address.size() <= 250
+        && data.district is string && data.district.size() >= 2 && data.district.size() <= 120
+        && data.reference is string && data.reference.size() <= 250
+        && data.routeDay is string && (
+          data.routeDay == 'Lunes' || data.routeDay == 'Martes' || data.routeDay == 'Miércoles' ||
+          data.routeDay == 'Jueves' || data.routeDay == 'Viernes' || data.routeDay == 'Sábado'
+        )
+        && data.notes is string && data.notes.size() <= 300
+        && data.visitStatus is string && (
+          data.visitStatus == 'pending' || data.visitStatus == 'visited_order' ||
+          data.visitStatus == 'visited_no_order' || data.visitStatus == 'absent'
+        )
+        && data.assignedSellerCode is string && data.assignedSellerCode.size() <= 32
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProductRecord(data) {
+      return data.keys().hasAll([
+          'ownerId', 'code', 'name', 'category', 'unit',
+          'price', 'stock', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'code', 'name', 'category', 'unit',
+          'price', 'stock', 'active', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.code is string && data.code.size() >= 2 && data.code.size() <= 32 && data.code.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.name is string && data.name.size() >= 2 && data.name.size() <= 180
+        && data.category is string && (
+          data.category == 'Bebidas' || data.category == 'Abarrotes' || data.category == 'Lácteos' ||
+          data.category == 'Limpieza' || data.category == 'Snacks y Golosinas' ||
+          data.category == 'Cuidado Personal' || data.category == 'Licores' || data.category == 'Otros'
+        )
+        && data.unit is string && (
+          data.unit == 'Caja' || data.unit == 'Fardo' || data.unit == 'Paquete' ||
+          data.unit == 'Saco' || data.unit == 'Unidad' || data.unit == 'Docena'
+        )
+        && (data.price is int || data.price is float) && data.price > 0
+        && (data.stock is int || data.stock is float) && data.stock >= 0
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidOrderRecord(data) {
+      return data.keys().hasAll([
+          'ownerId', 'orderNumber', 'customerId', 'customerCode', 'customerName',
+          'customerAddress', 'customerPhone', 'routeDay', 'itemsSummary', 'total',
+          'paymentMethod', 'sellerCode', 'sellerName', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'orderNumber', 'customerId', 'customerCode', 'customerName',
+          'customerAddress', 'customerPhone', 'routeDay', 'itemsSummary', 'total',
+          'paymentMethod', 'sellerCode', 'sellerName', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.orderNumber is string && data.orderNumber.size() >= 3 && data.orderNumber.size() <= 40
+        && data.customerId is string && data.customerId.size() >= 1 && data.customerId.size() <= 128 && data.customerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.customerCode is string && data.customerCode.size() >= 2 && data.customerCode.size() <= 32
+        && data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 150
+        && data.customerAddress is string && data.customerAddress.size() >= 3 && data.customerAddress.size() <= 250
+        && data.customerPhone is string && data.customerPhone.size() >= 6 && data.customerPhone.size() <= 30
+        && data.routeDay is string && (
+          data.routeDay == 'Lunes' || data.routeDay == 'Martes' || data.routeDay == 'Miércoles' ||
+          data.routeDay == 'Jueves' || data.routeDay == 'Viernes' || data.routeDay == 'Sábado'
+        )
+        && data.itemsSummary is string && data.itemsSummary.size() >= 2 && data.itemsSummary.size() <= 4000
+        && (data.total is int || data.total is float) && data.total >= 0
+        && data.paymentMethod is string && data.paymentMethod.size() >= 3 && data.paymentMethod.size() <= 80
+        && data.sellerCode is string && data.sellerCode.size() >= 2 && data.sellerCode.size() <= 32
+        && data.sellerName is string && data.sellerName.size() >= 2 && data.sellerName.size() <= 120
+        && data.status is string && (
+          data.status == 'pendiente_entrega' || data.status == 'entregado_y_cobrado' || data.status == 'cancelado'
+        )
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // Collection 1: /admins/{adminId}
+    match /admins/{adminId} {
+      allow get: if isSignedIn() && isValidId(adminId) && (request.auth.uid == adminId || isAdmin());
+      allow list: if isBootstrappedAdmin() && existing().uid == request.auth.uid;
+      allow create: if isBootstrappedAdmin()
+        && isValidId(adminId)
+        && isValidAdminRecord(incoming())
+        && incoming().uid == adminId
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isBootstrappedAdmin() && isValidId(adminId);
+    }
+
+    // Collection 2: /sales_users/{salesUserId}
+    match /sales_users/{salesUserId} {
+      allow get: if isSignedIn() && isValidId(salesUserId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(salesUserId)
+        && isValidSalesUser(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(salesUserId)
+        && isValidSalesUser(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'sellerCode', 'username', 'accessPin', 'fullName', 'role',
+            'phone', 'assignedZone', 'salesGoalSoles', 'active', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedUser() && isValidId(salesUserId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Collection 3: /customers/{customerId}
+    match /customers/{customerId} {
+      allow get: if isSignedIn() && isValidId(customerId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(customerId)
+        && isValidCustomerRecord(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(customerId)
+        && isValidCustomerRecord(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          // Action 1: Update visit status
+          incoming().diff(existing()).affectedKeys().hasOnly(['visitStatus', 'updatedAt']) ||
+          // Action 2: Full customer profile edit
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'code', 'name', 'ownerName', 'documentType', 'documentNumber',
+            'phone', 'address', 'district', 'reference', 'routeDay',
+            'notes', 'visitStatus', 'assignedSellerCode', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedUser() && isValidId(customerId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Collection 4: /products/{productId}
+    match /products/{productId} {
+      allow get: if isSignedIn() && isValidId(productId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(productId)
+        && isValidProductRecord(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(productId)
+        && isValidProductRecord(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          // Action 1: Stock adjustment
+          incoming().diff(existing()).affectedKeys().hasOnly(['stock', 'updatedAt']) ||
+          // Action 2: Product details update
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'code', 'name', 'category', 'unit', 'price', 'stock', 'active', 'updatedAt'
+          ])
+        );
+      allow delete: if isVerifiedUser() && isValidId(productId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+
+    // Collection 5: /orders/{orderId}
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && isValidId(orderId) && (existing().ownerId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isVerifiedUser()
+        && isValidId(orderId)
+        && isValidOrderRecord(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && exists(/databases/$(database)/documents/customers/$(incoming().customerId))
+        && get(/databases/$(database)/documents/customers/$(incoming().customerId)).data.ownerId == request.auth.uid;
+      allow update: if isVerifiedUser()
+        && isValidId(orderId)
+        && isValidOrderRecord(incoming())
+        && existing().ownerId == request.auth.uid
+        && incoming().ownerId == existing().ownerId
+        && incoming().customerId == existing().customerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() ||
+          (
+            // Pillar 4.6: Terminal State Locking (only pending orders can transition)
+            existing().status == 'pendiente_entrega'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(orderId) && (existing().ownerId == request.auth.uid || isAdmin());
+    }
+  }
+}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="112" fill="#0f172a"/>
+  <rect x="44" y="44" width="424" height="424" rx="84" fill="#064e3b" opacity="0.35"/>
+  <!-- Delivery Truck Body -->
+  <path d="M96 168C96 154.745 106.745 144 120 144H296C309.255 144 320 154.745 320 168V336H96V168Z" fill="#10b981"/>
+  <!-- Truck Cabin -->
+  <path d="M320 208H378.627C387.114 208 395.253 211.371 401.255 217.373L426.627 242.745C432.629 248.747 436 256.886 436 265.373V336H320V208Z" fill="#34d399"/>
+  <!-- Cabin Window -->
+  <path d="M340 228H374L406 260V280H340V228Z" fill="#0f172a"/>
+  <!-- Checkmark on Truck Box -->
+  <path d="M164 242L196 274L262 204" stroke="#ffffff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- Wheels -->
+  <circle cx="168" cy="348" r="38" fill="#ffffff"/>
+  <circle cx="168" cy="348" r="18" fill="#0f172a"/>
+  <circle cx="364" cy="348" r="38" fill="#ffffff"/>
+  <circle cx="364" cy="348" r="18" fill="#0f172a"/>
+</svg>

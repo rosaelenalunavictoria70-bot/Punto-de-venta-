@@ -1,0 +1,6 @@
+{
+  "name": "RutaVenta POS - Preventa y Pedidos en Ruta",
+  "description": "Sistema ágil de toma de pedidos en punto de venta con emisión inmediata de tickets de cobranza en Soles (S/.), base de datos de clientes y productos con códigos, y sincronización de ruta diaria de lunes a sábado.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
