@@ -40,9 +40,11 @@ export const DeploymentGuideView: React.FC = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
-  const defaultPublicUrl = 'https://ais-pre-yq3pbpf3w3r2ny2ptzbmru-615535984263.us-east1.run.app';
+  const defaultPublicUrl = 'https://punto-de-venta-khaki.vercel.app';
   const [customAppUrl, setCustomAppUrl] = useState<string>(() => {
-    return localStorage.getItem('rv_custom_public_url') || defaultPublicUrl;
+    const saved = localStorage.getItem('rv_custom_public_url');
+    if (!saved || saved.includes('ais-pre-')) return defaultPublicUrl;
+    return saved;
   });
   const [urlSaved, setUrlSaved] = useState(false);
 
@@ -131,7 +133,7 @@ echo "✅ ¡Aplicación publicada exitosamente fuera de Gemini!"`;
         </div>
       </div>
 
-      {/* IMPORTANT ALERT: FIX "ESTA PÁGINA NO SE ENCUENTRA" */}
+      {/* IMPORTANT ALERT: FIX "ESTA PÁGINA NO SE ENCUENTRA" & GITHUB "ROSA ELENA" */}
       <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 shadow-xs space-y-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 mt-0.5">
@@ -139,36 +141,49 @@ echo "✅ ¡Aplicación publicada exitosamente fuera de Gemini!"`;
           </div>
           <div className="space-y-1">
             <h2 className="text-sm sm:text-base font-black text-amber-950">
-              ¿Por qué te salió «Esta página no se encuentra» al abrir el link de WhatsApp y cómo activarlo ahora mismo?
+              ¡Excelente! Ya guardaste tu proyecto «Rosa Elena» en GitHub. ¿Por qué aún no abre el link y qué hacer ahora?
             </h2>
             <p className="text-xs text-amber-900 leading-relaxed">
-              El enlace externo (<code>ais-pre-...run.app</code>) permanece <strong>apagado por seguridad</strong> mientras estás editando dentro de AI Studio. Para encender el servidor público y que cualquier celular pueda entrar sin estar en Gemini, realiza <strong>uno de estos 2 pasos</strong>:
+              El botón de <strong>GitHub</strong> que presionaste sirve para guardar el código fuente en tu cuenta de GitHub bajo el nombre <strong>«Rosa Elena»</strong>, pero <strong>no enciende la página web</strong> por sí solo. Tienes <strong>2 formas muy fáciles</strong> de activar tu link web ahora mismo:
             </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-white rounded-xl p-4 border border-amber-200 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-black text-emerald-800 uppercase tracking-wider">
-              <Rocket className="w-4 h-4 text-emerald-600" />
-              <span>Forma 1 (En 10 segundos): Botón «Publish» arriba a la derecha</span>
+          <div className="bg-white rounded-xl p-4 border border-amber-200 space-y-2.5 flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs font-black text-indigo-800 uppercase tracking-wider">
+                <GitBranch className="w-4 h-4 text-indigo-600" />
+                <span>Opción A (Recomendada): Conectar tu GitHub «Rosa Elena» en Vercel</span>
+              </div>
+              <ol className="list-decimal list-inside text-xs text-slate-700 space-y-1.5 leading-relaxed">
+                <li>Haz clic en el botón morado de abajo para abrir <strong>Vercel.com</strong>.</li>
+                <li>Elige <strong>«Continue with GitHub»</strong> (entra con la misma cuenta donde creaste <em>Rosa Elena</em>).</li>
+                <li>Verás tu proyecto <strong>Rosa Elena</strong> en la lista: dale clic a <strong>Import</strong> y luego al botón <strong>Deploy</strong>.</li>
+                <li>En 30 segundos te dará tu link definitivo (ej. <code>https://rosa-elena.vercel.app</code>) que abre en cualquier celular.</li>
+              </ol>
             </div>
-            <ol className="list-decimal list-inside text-xs text-slate-700 space-y-1.5 leading-relaxed">
-              <li>Mira la <strong>barra superior derecha de esta ventana de AI Studio</strong> (afuera de la app, donde está el botón <strong>Publish</strong> o el ícono de compartir/cohete).</li>
-              <li>Haz clic en <strong>Publish</strong> (Publicar) y confirma publicar la app.</li>
-              <li>¡Listo! Al hacer eso, Google enciende el enlace <code>{defaultPublicUrl}</code> para todo el público y ya abrirá desde WhatsApp sin error.</li>
-            </ol>
+            <a
+              href="https://vercel.com/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-colors"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Abrir Vercel para Publicar mi GitHub «Rosa Elena»</span>
+            </a>
           </div>
 
           <div className="bg-white rounded-xl p-4 border border-amber-200 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-black text-indigo-800 uppercase tracking-wider">
-              <GitBranch className="w-4 h-4 text-indigo-600" />
-              <span>Forma 2 (Dominio Propio 100% Independiente): GitHub + Vercel</span>
+            <div className="flex items-center gap-2 text-xs font-black text-emerald-800 uppercase tracking-wider">
+              <Rocket className="w-4 h-4 text-emerald-600" />
+              <span>Opción B: El botón al costado de GitHub en AI Studio</span>
             </div>
             <ol className="list-decimal list-inside text-xs text-slate-700 space-y-1.5 leading-relaxed">
-              <li>Haz clic en el ícono de <strong>GitHub</strong> arriba a la derecha en AI Studio para guardar tu código en tu cuenta gratuita de GitHub.</li>
-              <li>Entra a <strong>vercel.com</strong> (gratis), inicia sesión con tu GitHub y dale a <strong>Import Project</strong>.</li>
-              <li>Vercel te dará un link permanente (ej. <code>https://rutaventa-pos.vercel.app</code>) que nunca depende de Gemini. Pégalo abajo para compartirlo por WhatsApp.</li>
+              <li>Mira arriba a la derecha de AI Studio, <strong>justo al costado del ícono de GitHub</strong> donde hiciste clic.</li>
+              <li>Busca el botón que dice <strong>Deploy app</strong> o el ícono de <strong>Compartir (Share app)</strong> (no el de GitHub).</li>
+              <li>Al activarlo en modo público (Public), recién se encenderá el enlace <code>{defaultPublicUrl}</code>.</li>
+              <li><strong>Nota importante:</strong> Cada vez que hagas cambios nuevos (como los códigos Unitario, Caja, Pack y Display que acabamos de agregar), vuelve a darle al botón de <strong>GitHub → Push / Update</strong> para actualizar tu proyecto <em>Rosa Elena</em>.</li>
             </ol>
           </div>
         </div>

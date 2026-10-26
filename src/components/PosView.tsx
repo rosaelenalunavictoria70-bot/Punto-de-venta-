@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Customer, Product, OrderItem, PaymentMethod, DeliveryTimeSlot, ProductCategory } from '../types';
-import { formatCurrencySoles } from '../data/initialData';
+import {
+  Customer,
+  Product,
+  OrderItem,
+  PaymentMethod,
+  DeliveryTimeSlot,
+  ProductCategory,
+  PresentationType,
+  ProductPresentation,
+  ProductUnit,
+} from '../types';
+import { formatCurrencySoles, getProductPresentations } from '../data/initialData';
 import {
   Search,
   ShoppingCart,
@@ -87,13 +97,37 @@ export const PosView: React.FC = () => {
     'Licores',
   ];
 
-  // Filtered products
+  // Custom prices and custom quantities state per product+presentation in catalog
+  const [customPrices, setCustomPrices] = useState<Record<string, number>>({});
+  const [inputQuantities, setInputQuantities] = useState<Record<string, string>>({});
+
+  // Helper to get presentation key
+  const getPresKey = (productId: string, presType: PresentationType) => `${productId}__${presType}`;
+
+  const presentationTypeToUnit = (presType: PresentationType): ProductUnit => {
+    switch (presType) {
+      case 'Unitario':
+        return 'Unidad';
+      case 'Caja':
+        return 'Caja';
+      case 'Pack':
+        return 'Pack';
+      case 'Display':
+        return 'Display';
+    }
+  };
+
+  // Filtered products (also matches any presentation code like BEB-001-CAJ, BEB-001-UND, etc.)
   const filteredProducts = products.filter(p => {
     if (!p.active) return false;
+    const presentations = getProductPresentations(p);
+    const q = productSearch.toLowerCase().trim();
     const matchesSearch =
-      p.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-      p.code.toLowerCase().includes(productSearch.toLowerCase()) ||
-      (p.barcode && p.barcode.includes(productSearch));
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      p.code.toLowerCase().includes(q) ||
+      (p.barcode && p.barcode.includes(q)) ||
+      presentations.some(pres => pres.code.toLowerCase().includes(q));
 
     const matchesCat = selectedCategory === 'all' || p.category === selectedCategory;
 
@@ -110,17 +144,37 @@ export const PosView: React.FC = () => {
     );
   });
 
-  // Cart operations
-  const addToCart = (product: Product, quantityToAdd = 1) => {
+  // Add or update a specific presentation (Unitario, Pack, Display, Caja) in Cart
+  const addPresentationToCart = (
+    product: Product,
+    pres: ProductPresentation,
+    quantityToAdd: number,
+    overridePrice?: number
+  ) => {
+    if (quantityToAdd <= 0) return;
+    const key = getPresKey(product.id, pres.type);
+    const effectivePrice =
+      overridePrice !== undefined
+        ? overridePrice
+        : customPrices[key] !== undefined
+        ? customPrices[key]
+        : pres.price;
+
+    const unitLabel = presentationTypeToUnit(pres.type);
+
     setCartItems(prev => {
-      const existing = prev.find(item => item.productId === product.id);
+      const existing = prev.find(
+        item => item.productId === product.id && item.productCode === pres.code
+      );
       if (existing) {
+        const nextQty = existing.quantity + quantityToAdd;
         return prev.map(item =>
-          item.productId === product.id
+          item.productId === product.id && item.productCode === pres.code
             ? {
                 ...item,
-                quantity: item.quantity + quantityToAdd,
-                subtotal: (item.quantity + quantityToAdd) * item.unitPrice,
+                unitPrice: effectivePrice,
+                quantity: nextQty,
+                subtotal: Number((nextQty * effectivePrice).toFixed(2)),
               }
             : item
         );
@@ -129,42 +183,112 @@ export const PosView: React.FC = () => {
           ...prev,
           {
             productId: product.id,
-            productCode: product.code,
-            productName: product.name,
-            unit: product.unit,
-            unitPrice: product.price,
+            productCode: pres.code,
+            productName: `${product.name.replace(/\s*\(.*?\)\s*$/, '')} (${pres.type})`,
+            unit: unitLabel,
+            presentationType: pres.type,
+            unitPrice: effectivePrice,
             quantity: quantityToAdd,
-            subtotal: quantityToAdd * product.price,
+            subtotal: Number((quantityToAdd * effectivePrice).toFixed(2)),
           },
         ];
       }
     });
   };
 
-  const updateQuantity = (productId: string, newQty: number) => {
+  // Set exact quantity for a presentation directly from the product card table
+  const setExactPresentationQuantity = (
+    product: Product,
+    pres: ProductPresentation,
+    exactQty: number
+  ) => {
+    const key = getPresKey(product.id, pres.type);
+    const effectivePrice =
+      customPrices[key] !== undefined ? customPrices[key] : pres.price;
+    const unitLabel = presentationTypeToUnit(pres.type);
+
+    if (exactQty <= 0) {
+      setCartItems(prev =>
+        prev.filter(
+          item => !(item.productId === product.id && item.productCode === pres.code)
+        )
+      );
+      return;
+    }
+
+    setCartItems(prev => {
+      const existing = prev.find(
+        item => item.productId === product.id && item.productCode === pres.code
+      );
+      if (existing) {
+        return prev.map(item =>
+          item.productId === product.id && item.productCode === pres.code
+            ? {
+                ...item,
+                unitPrice: effectivePrice,
+                quantity: exactQty,
+                subtotal: Number((exactQty * effectivePrice).toFixed(2)),
+              }
+            : item
+        );
+      } else {
+        return [
+          ...prev,
+          {
+            productId: product.id,
+            productCode: pres.code,
+            productName: `${product.name.replace(/\s*\(.*?\)\s*$/, '')} (${pres.type})`,
+            unit: unitLabel,
+            presentationType: pres.type,
+            unitPrice: effectivePrice,
+            quantity: exactQty,
+            subtotal: Number((exactQty * effectivePrice).toFixed(2)),
+          },
+        ];
+      }
+    });
+  };
+
+  const updateCartItemQuantity = (productCode: string, newQty: number) => {
     if (newQty <= 0) {
-      removeFromCart(productId);
+      removeFromCart(productCode);
       return;
     }
     setCartItems(prev =>
       prev.map(item =>
-        item.productId === productId
+        item.productCode === productCode
           ? {
               ...item,
               quantity: newQty,
-              subtotal: newQty * item.unitPrice,
+              subtotal: Number((newQty * item.unitPrice).toFixed(2)),
             }
           : item
       )
     );
   };
 
-  const removeFromCart = (productId: string) => {
-    setCartItems(prev => prev.filter(item => item.productId !== productId));
+  const updateCartItemPrice = (productCode: string, newPrice: number) => {
+    const validPrice = Math.max(0, newPrice);
+    setCartItems(prev =>
+      prev.map(item =>
+        item.productCode === productCode
+          ? {
+              ...item,
+              unitPrice: validPrice,
+              subtotal: Number((item.quantity * validPrice).toFixed(2)),
+            }
+          : item
+      )
+    );
+  };
+
+  const removeFromCart = (productCode: string) => {
+    setCartItems(prev => prev.filter(item => item.productCode !== productCode));
   };
 
   const clearCart = () => {
     setCartItems([]);
+    setInputQuantities({});
     setDiscountAmount(0);
     setCashAmountGiven('');
     setOrderNotes('');
@@ -364,14 +488,16 @@ export const PosView: React.FC = () => {
           )}
         </div>
 
-        {/* Product Catalog & Fast Add Grid */}
+        {/* Product Catalog & Multi-Presentation Grid */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Catálogo de Productos para Venta</h2>
+              <h2 className="text-base font-bold text-slate-900">
+                Catálogo por Presentación: Unitario, Pack, Display y Caja
+              </h2>
               <p className="text-xs text-slate-500">
-                Toca cualquier producto o usa los botones rápidos para sumar al ticket
+                Cada producto tiene código y precio editable para <strong>Unitario (-UND)</strong>, <strong>Pack (-PCK)</strong>, <strong>Display (-DSP)</strong> y <strong>Caja (-CAJ)</strong>. Escribe la cantidad exacta que pida el cliente.
               </p>
             </div>
 
@@ -380,7 +506,7 @@ export const PosView: React.FC = () => {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Buscar por código (BEB-001) o nombre..."
+                placeholder="Buscar BEB-001-UND, BEB-001-CAJ o nombre..."
                 value={productSearch}
                 onChange={e => setProductSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
@@ -415,84 +541,200 @@ export const PosView: React.FC = () => {
             ))}
           </div>
 
-          {/* Product Items Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {/* Product Items Grid (2 Columns on XL so the 4 presentations table fits comfortably) */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             {filteredProducts.length === 0 ? (
               <div className="col-span-full py-8 text-center text-xs text-slate-500">
                 No se encontraron productos coincidentes con "{productSearch}".
               </div>
             ) : (
               filteredProducts.map(product => {
-                const inCart = cartItems.find(item => item.productId === product.id);
-                const quantityInCart = inCart?.quantity || 0;
+                const presentations = getProductPresentations(product);
+                const productCartItems = cartItems.filter(item => item.productId === product.id);
+                const totalProductSubtotal = productCartItems.reduce((s, i) => s + i.subtotal, 0);
 
                 return (
                   <div
                     key={product.id}
-                    className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between ${
-                      quantityInCart > 0
-                        ? 'border-emerald-500 bg-emerald-50/20 shadow-xs ring-1 ring-emerald-500/20'
+                    className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                      productCartItems.length > 0
+                        ? 'border-emerald-500 bg-emerald-50/15 shadow-xs ring-1 ring-emerald-500/20'
                         : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
                     }`}
                   >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-mono text-[10px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-                          {product.code}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          Stock: <strong className="text-slate-800">{product.stock}</strong>
+                    {/* Product Header */}
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] font-bold text-slate-800 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                            Base: {product.code}
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
+                            {product.category}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500">
+                          Stock: <strong className="text-slate-900">{product.stock}</strong>
                         </span>
                       </div>
 
-                      <h3 className="text-xs font-bold text-slate-900 leading-snug line-clamp-2 min-h-[32px]">
+                      <h3 className="text-sm font-bold text-slate-900 leading-snug">
                         {product.name}
                       </h3>
+                    </div>
 
-                      <div className="text-[11px] text-slate-500 mt-0.5 mb-2">
-                        Pres: <span className="font-medium text-slate-700">{product.unit}</span>
+                    {/* 4 PRESENTATIONS TABLE: UNITARIO, PACK, DISPLAY, CAJA */}
+                    <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                      <div className="grid grid-cols-12 bg-slate-100/80 px-2.5 py-1.5 text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                        <div className="col-span-4">Presentación / Código</div>
+                        <div className="col-span-3 text-right">Precio (S/.)</div>
+                        <div className="col-span-5 text-center">Cantidad Solicitada</div>
+                      </div>
+
+                      <div className="divide-y divide-slate-200/70">
+                        {presentations.map(pres => {
+                          const presKey = getPresKey(product.id, pres.type);
+                          const currentPrice =
+                            customPrices[presKey] !== undefined ? customPrices[presKey] : pres.price;
+                          const inCartItem = cartItems.find(
+                            i => i.productId === product.id && i.productCode === pres.code
+                          );
+                          const cartQty = inCartItem ? inCartItem.quantity : 0;
+                          const displayQtyValue =
+                            inputQuantities[presKey] !== undefined
+                              ? inputQuantities[presKey]
+                              : cartQty > 0
+                              ? String(cartQty)
+                              : '';
+
+                          const badgeColors: Record<PresentationType, string> = {
+                            Unitario: 'bg-blue-50 text-blue-800 border-blue-200',
+                            Pack: 'bg-purple-50 text-purple-800 border-purple-200',
+                            Display: 'bg-amber-50 text-amber-800 border-amber-200',
+                            Caja: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+                          };
+
+                          return (
+                            <div
+                              key={pres.code}
+                              className={`grid grid-cols-12 items-center px-2.5 py-2 gap-1.5 text-xs ${
+                                cartQty > 0 ? 'bg-emerald-50/60' : 'bg-white'
+                              }`}
+                            >
+                              {/* Code & Type */}
+                              <div className="col-span-4 min-w-0">
+                                <span
+                                  className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border ${badgeColors[pres.type]}`}
+                                >
+                                  {pres.type}
+                                </span>
+                                <div className="font-mono text-[10px] font-bold text-slate-700 mt-0.5 truncate">
+                                  {pres.code}
+                                </div>
+                              </div>
+
+                              {/* Editable Price in Soles */}
+                              <div className="col-span-3 flex items-center justify-end">
+                                <div className="relative w-20">
+                                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-mono">
+                                    S/
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0.1"
+                                    step="0.10"
+                                    value={currentPrice}
+                                    onChange={e => {
+                                      const val = parseFloat(e.target.value) || 0;
+                                      setCustomPrices(prev => ({ ...prev, [presKey]: val }));
+                                      if (cartQty > 0) {
+                                        updateCartItemPrice(pres.code, val);
+                                      }
+                                    }}
+                                    title="Precio editable en Soles"
+                                    className="w-full pl-5 pr-1 py-1 text-right font-mono font-bold text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-600 text-slate-900"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Editable Quantity Input + Stepper Buttons */}
+                              <div className="col-span-5 flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = Math.max(0, cartQty - 1);
+                                    setInputQuantities(prev => ({
+                                      ...prev,
+                                      [presKey]: next > 0 ? String(next) : '',
+                                    }));
+                                    setExactPresentationQuantity(product, pres, next);
+                                  }}
+                                  className="w-6 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold cursor-pointer shrink-0"
+                                  title="Restar 1"
+                                >
+                                  <Minus className="w-3 h-3" />
+                                </button>
+
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  placeholder="0"
+                                  value={displayQtyValue}
+                                  onChange={e => {
+                                    const raw = e.target.value;
+                                    setInputQuantities(prev => ({ ...prev, [presKey]: raw }));
+                                    const num = parseInt(raw, 10);
+                                    if (!isNaN(num) && num >= 0) {
+                                      setExactPresentationQuantity(product, pres, num);
+                                    } else if (raw === '') {
+                                      setExactPresentationQuantity(product, pres, 0);
+                                    }
+                                  }}
+                                  className={`w-14 h-7 text-center font-mono font-bold text-xs rounded-lg border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                                    cartQty > 0
+                                      ? 'bg-emerald-600 text-white border-emerald-700'
+                                      : 'bg-white text-slate-900 border-slate-300'
+                                  }`}
+                                  title={`Escribir cantidad de ${pres.type} (${pres.code})`}
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = cartQty + 1;
+                                    setInputQuantities(prev => ({
+                                      ...prev,
+                                      [presKey]: String(next),
+                                    }));
+                                    addPresentationToCart(product, pres, 1, currentPrice);
+                                  }}
+                                  className="w-6 h-7 rounded-lg bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center font-bold cursor-pointer shrink-0"
+                                  title="Sumar 1"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    <div>
-                      <div className="flex items-baseline justify-between pt-2 border-t border-slate-100 mb-2">
-                        <span className="text-[10px] text-slate-400">Precio x {product.unit}:</span>
-                        <span className="text-base font-extrabold text-slate-900 tabular-nums">
-                          {formatCurrencySoles(product.price)}
+                    {/* Summary of selected presentations for this product */}
+                    {productCartItems.length > 0 && (
+                      <div className="mt-2.5 px-3 py-1.5 rounded-xl bg-emerald-100/80 border border-emerald-200 flex items-center justify-between text-[11px] font-bold text-emerald-950">
+                        <span>
+                          En ticket:{' '}
+                          {productCartItems
+                            .map(i => `${i.quantity} ${i.presentationType || i.unit} (${i.productCode})`)
+                            .join(' + ')}
+                        </span>
+                        <span className="tabular-nums text-emerald-800">
+                          {formatCurrencySoles(totalProductSubtotal)}
                         </span>
                       </div>
-
-                      {/* Quick Add Buttons */}
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => addToCart(product, 1)}
-                          className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Agregar</span>
-                        </button>
-                        <button
-                          onClick={() => addToCart(product, 5)}
-                          title="Sumar 5 unidades"
-                          className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-                        >
-                          +5
-                        </button>
-                        <button
-                          onClick={() => addToCart(product, 10)}
-                          title="Sumar 10 unidades"
-                          className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-                        >
-                          +10
-                        </button>
-                      </div>
-
-                      {quantityInCart > 0 && (
-                        <div className="mt-2 text-center text-[11px] font-bold text-emerald-700 bg-emerald-100/60 py-1 rounded-md">
-                          En pedido: {quantityInCart} {product.unit} = {formatCurrencySoles(quantityInCart * product.price)}
-                        </div>
-                      )}
-                    </div>
+                    )}
                   </div>
                 );
               })
@@ -523,59 +765,97 @@ export const PosView: React.FC = () => {
             )}
           </div>
 
-          {/* Cart items list */}
-          <div className="my-3 max-h-[300px] overflow-y-auto divide-y divide-slate-100 pr-1">
+          {/* Cart items list with editable quantity and editable price */}
+          <div className="my-3 max-h-[340px] overflow-y-auto divide-y divide-slate-100 pr-1">
             {cartItems.length === 0 ? (
               <div className="py-10 text-center text-slate-400">
                 <ShoppingCart className="w-8 h-8 mx-auto mb-2 opacity-40" />
                 <p className="text-xs font-medium">El carrito está vacío</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">
-                  Selecciona productos del catálogo a la izquierda
+                  Escribe la cantidad en Unitario, Pack, Display o Caja a la izquierda
                 </p>
               </div>
             ) : (
               cartItems.map(item => (
-                <div key={item.productId} className="py-2.5 flex items-center justify-between gap-2 text-xs">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-[10px] text-slate-500 font-bold">
-                        {item.productCode}
-                      </span>
-                      <h4 className="font-semibold text-slate-900 truncate">
+                <div key={item.productCode} className="py-2.5 space-y-1.5 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono text-[10px] bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded text-slate-800 font-bold">
+                          {item.productCode}
+                        </span>
+                        {item.presentationType && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            {item.presentationType}
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="font-semibold text-slate-900 mt-0.5 leading-snug">
                         {item.productName}
                       </h4>
                     </div>
-                    <div className="text-[11px] text-slate-500 mt-0.5">
-                      {item.quantity} x {formatCurrencySoles(item.unitPrice)}
-                    </div>
-                  </div>
 
-                  {/* Quantity Stepper */}
-                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
-                      onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                      className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold transition-colors cursor-pointer"
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="w-7 text-center font-bold text-slate-900 tabular-nums">
-                      {item.quantity}
-                    </span>
-                    <button
-                      onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                      className="w-6 h-6 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center font-bold transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                    <div className="w-16 text-right font-bold text-slate-900 tabular-nums">
-                      {formatCurrencySoles(item.subtotal)}
-                    </div>
-                    <button
-                      onClick={() => removeFromCart(item.productId)}
-                      className="p-1 text-slate-400 hover:text-rose-600 transition-colors ml-1 cursor-pointer"
+                      onClick={() => removeFromCart(item.productCode)}
+                      className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
+                      title="Quitar del ticket"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
+                  </div>
+
+                  {/* Editable Quantity & Editable Price Row inside Cart */}
+                  <div className="flex items-center justify-between gap-2 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-slate-500 font-semibold mr-0.5">Cant:</span>
+                      <button
+                        onClick={() => updateCartItemQuantity(item.productCode, item.quantity - 1)}
+                        className="w-5 h-6 rounded bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center justify-center font-bold cursor-pointer"
+                      >
+                        <Minus className="w-2.5 h-2.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={item.quantity}
+                        onChange={e => {
+                          const val = parseInt(e.target.value, 10);
+                          if (!isNaN(val) && val > 0) {
+                            updateCartItemQuantity(item.productCode, val);
+                          }
+                        }}
+                        className="w-12 h-6 text-center font-mono font-bold text-xs bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                      />
+                      <button
+                        onClick={() => updateCartItemQuantity(item.productCode, item.quantity + 1)}
+                        className="w-5 h-6 rounded bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center justify-center font-bold cursor-pointer"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-slate-500 font-semibold">S/</span>
+                      <input
+                        type="number"
+                        min="0.1"
+                        step="0.10"
+                        value={item.unitPrice}
+                        onChange={e => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val) && val >= 0) {
+                            updateCartItemPrice(item.productCode, val);
+                          }
+                        }}
+                        className="w-16 h-6 text-right pr-1 font-mono font-bold text-xs bg-white border border-slate-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                        title="Precio unitario editable"
+                      />
+                    </div>
+
+                    <div className="text-right font-extrabold text-slate-900 tabular-nums min-w-[62px]">
+                      {formatCurrencySoles(item.subtotal)}
+                    </div>
                   </div>
                 </div>
               ))

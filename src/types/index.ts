@@ -49,15 +49,34 @@ export type ProductCategory =
   | 'Licores'
   | 'Otros';
 
-export type ProductUnit = 'Caja' | 'Fardo' | 'Paquete' | 'Saco' | 'Unidad' | 'Docena';
+export type ProductUnit =
+  | 'Unidad'
+  | 'Caja'
+  | 'Pack'
+  | 'Display'
+  | 'Paquete'
+  | 'Fardo'
+  | 'Saco'
+  | 'Docena';
+
+export type PresentationType = 'Unitario' | 'Caja' | 'Pack' | 'Display';
+
+export interface ProductPresentation {
+  type: PresentationType;
+  code: string; // e.g. BEB-001-UND, BEB-001-CAJ, BEB-001-PCK, BEB-001-DSP
+  label: string; // e.g. "Unitario (1 und)", "Caja (x12 unds)", "Pack (x6 unds)", "Display (x24 unds)"
+  unitsPerPresentation: number;
+  price: number; // Precio en Soles S/.
+}
 
 export interface Product {
   id: string;
-  code: string; // e.g. BEB-001, PROD-010
+  code: string; // Código base e.g. BEB-001
   name: string;
   category: ProductCategory;
   unit: ProductUnit;
-  price: number; // Precio en Soles S/.
+  price: number; // Precio principal en Soles S/.
+  presentations?: ProductPresentation[]; // Códigos y precios para Unitario, Caja, Pack, Display
   costPrice?: number;
   suggestedRetailPrice?: number;
   stock: number;
@@ -68,9 +87,10 @@ export interface Product {
 
 export interface OrderItem {
   productId: string;
-  productCode: string;
+  productCode: string; // Código específico (ej. BEB-001-CAJ, BEB-001-UND, BEB-001-PCK, BEB-001-DSP)
   productName: string;
   unit: ProductUnit;
+  presentationType?: PresentationType;
   unitPrice: number; // S/.
   quantity: number;
   subtotal: number; // S/.

@@ -30,14 +30,31 @@ export const RouteScheduleView: React.FC = () => {
     updateCustomerVisitStatus,
     orders,
     openTicketModal,
+    currentSalesUser,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const todayRealDay = getTodayRouteDay();
 
+  const isSupervisor =
+    !currentSalesUser ||
+    currentSalesUser.role === 'supervisor' ||
+    currentSalesUser.role === 'admin';
+
+  // Scope customers and orders: Vendedor only sees their own assigned route, Supervisor sees all
+  const scopedCustomers = isSupervisor
+    ? customers
+    : customers.filter(
+        c => !c.assignedSellerCode || c.assignedSellerCode === currentSalesUser?.sellerCode
+      );
+
+  const scopedOrders = isSupervisor
+    ? orders
+    : orders.filter(o => !o.sellerCode || o.sellerCode === currentSalesUser?.sellerCode);
+
   // Filter customers for the selected route day
-  const dayCustomers = customers.filter(c => c.routeDay === selectedRouteDay);
+  const dayCustomers = scopedCustomers.filter(c => c.routeDay === selectedRouteDay);
 
   // Search and status filter
   const filteredCustomers = dayCustomers.filter(c => {
@@ -64,7 +81,7 @@ export const RouteScheduleView: React.FC = () => {
   const noOrderCount = dayCustomers.filter(c => c.visitStatus === 'visited_no_order' || c.visitStatus === 'absent').length;
 
   // Calculate day's total sales in Soles (S/.)
-  const dayTotalSales = orders
+  const dayTotalSales = scopedOrders
     .filter(o => o.routeDay === selectedRouteDay)
     .reduce((sum, ord) => sum + ord.total, 0);
 

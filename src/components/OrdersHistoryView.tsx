@@ -20,13 +20,22 @@ import {
 } from 'lucide-react';
 
 export const OrdersHistoryView: React.FC = () => {
-  const { orders, openTicketModal, updateOrderStatus, deleteOrder, companyConfig } = useApp();
+  const { orders, openTicketModal, updateOrderStatus, deleteOrder, companyConfig, currentSalesUser } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dayFilter, setDayFilter] = useState<string>('all');
 
-  const filteredOrders = orders.filter(order => {
+  const isSupervisor =
+    !currentSalesUser ||
+    currentSalesUser.role === 'supervisor' ||
+    currentSalesUser.role === 'admin';
+
+  const scopedOrders = isSupervisor
+    ? orders
+    : orders.filter(o => !o.sellerCode || o.sellerCode === currentSalesUser?.sellerCode);
+
+  const filteredOrders = scopedOrders.filter(order => {
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.customerCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -41,15 +50,15 @@ export const OrdersHistoryView: React.FC = () => {
   });
 
   // Calculate stats
-  const totalSalesAmount = orders
+  const totalSalesAmount = scopedOrders
     .filter(o => o.status !== 'cancelado')
     .reduce((sum, o) => sum + o.total, 0);
 
-  const pendingDeliveryAmount = orders
+  const pendingDeliveryAmount = scopedOrders
     .filter(o => o.status === 'pendiente_entrega')
     .reduce((sum, o) => sum + o.total, 0);
 
-  const deliveredAmount = orders
+  const deliveredAmount = scopedOrders
     .filter(o => o.status === 'entregado_y_cobrado')
     .reduce((sum, o) => sum + o.total, 0);
 

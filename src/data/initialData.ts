@@ -1005,3 +1005,77 @@ export function getTodayRouteDay(): RouteDay {
 export function formatCurrencySoles(amount: number): string {
   return `S/ ${amount.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
+
+export function getProductPresentations(product: Product) {
+  if (product.presentations && product.presentations.length === 4) {
+    return product.presentations;
+  }
+
+  const baseCode = product.code.replace(/-(UND|CAJ|PCK|DSP)$/i, '');
+  const basePrice = Number(product.price) || 10;
+
+  // Calculate realistic prices based on the product's primary unit
+  let unitarioPrice = basePrice;
+  let packPrice = basePrice;
+  let displayPrice = basePrice;
+  let cajaPrice = basePrice;
+
+  if (product.unit === 'Unidad') {
+    unitarioPrice = Number(basePrice.toFixed(2));
+    packPrice = Number((basePrice * 6 * 0.95).toFixed(2));
+    displayPrice = Number((basePrice * 12 * 0.92).toFixed(2));
+    cajaPrice = Number((basePrice * 24 * 0.88).toFixed(2));
+  } else if (product.unit === 'Paquete' || product.unit === 'Pack') {
+    packPrice = Number(basePrice.toFixed(2));
+    unitarioPrice = Number((basePrice / 6 * 1.08).toFixed(2));
+    displayPrice = Number((basePrice * 2 * 0.96).toFixed(2));
+    cajaPrice = Number((basePrice * 4 * 0.92).toFixed(2));
+  } else if (product.unit === 'Display') {
+    displayPrice = Number(basePrice.toFixed(2));
+    unitarioPrice = Number((basePrice / 12 * 1.1).toFixed(2));
+    packPrice = Number((basePrice / 2 * 1.04).toFixed(2));
+    cajaPrice = Number((basePrice * 2 * 0.94).toFixed(2));
+  } else {
+    // Caja / Fardo / Saco
+    cajaPrice = Number(basePrice.toFixed(2));
+    unitarioPrice = Number((basePrice / 12 * 1.12).toFixed(2));
+    packPrice = Number((basePrice / 2 * 1.05).toFixed(2));
+    displayPrice = Number((basePrice * 0.75).toFixed(2));
+  }
+
+  const existingMap = new Map(
+    (product.presentations || []).map(p => [p.type, p])
+  );
+
+  return [
+    existingMap.get('Unitario') || {
+      type: 'Unitario' as const,
+      code: `${baseCode}-UND`,
+      label: 'Unitario',
+      unitsPerPresentation: 1,
+      price: unitarioPrice,
+    },
+    existingMap.get('Pack') || {
+      type: 'Pack' as const,
+      code: `${baseCode}-PCK`,
+      label: 'Pack',
+      unitsPerPresentation: 6,
+      price: packPrice,
+    },
+    existingMap.get('Display') || {
+      type: 'Display' as const,
+      code: `${baseCode}-DSP`,
+      label: 'Display',
+      unitsPerPresentation: 12,
+      price: displayPrice,
+    },
+    existingMap.get('Caja') || {
+      type: 'Caja' as const,
+      code: `${baseCode}-CAJ`,
+      label: 'Caja',
+      unitsPerPresentation: 24,
+      price: cajaPrice,
+    },
+  ];
+}
+

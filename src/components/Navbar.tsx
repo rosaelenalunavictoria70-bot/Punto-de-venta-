@@ -20,6 +20,10 @@ export const Navbar: React.FC = () => {
   } = useApp();
 
   const isOnline = useOnlineStatus();
+  const isSupervisor =
+    !currentSalesUser ||
+    currentSalesUser.role === 'supervisor' ||
+    currentSalesUser.role === 'admin';
 
   return (
     <div className="sticky top-0 z-40 no-print">
@@ -47,7 +51,7 @@ export const Navbar: React.FC = () => {
                   : 'text-slate-600 border-transparent hover:text-slate-900'
               }`}
             >
-              Dashboard
+              {isSupervisor ? 'Dashboard Supervisor' : 'Mi Avance'}
             </button>
 
             <button
@@ -59,7 +63,7 @@ export const Navbar: React.FC = () => {
                   : 'text-slate-600 border-transparent hover:text-slate-900'
               }`}
             >
-              Rutas
+              {isSupervisor ? 'Rutas' : 'Mi Ruta'}
             </button>
 
             <button
@@ -95,7 +99,7 @@ export const Navbar: React.FC = () => {
                   : 'text-slate-600 border-transparent hover:text-slate-900'
               }`}
             >
-              Clientes
+              {isSupervisor ? 'Clientes' : 'Mis Clientes'}
             </button>
           </nav>
 
@@ -135,8 +139,14 @@ export const Navbar: React.FC = () => {
                 <span className="font-semibold text-white truncate max-w-[160px] sm:max-w-none">
                   {currentSalesUser.fullName}
                 </span>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  ({currentSalesUser.role === 'admin' || currentSalesUser.role === 'supervisor' ? 'Supervisor' : 'Vendedor'})
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                    isSupervisor
+                      ? 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
+                      : 'bg-sky-500/20 text-sky-300 border border-sky-400/30'
+                  }`}
+                >
+                  {isSupervisor ? 'Vista Supervisor / Gerencia' : 'Vista Vendedor de Ruta'}
                 </span>
               </div>
             )}
@@ -145,53 +155,58 @@ export const Navbar: React.FC = () => {
             <div className="hidden lg:flex items-center gap-3 pl-3 border-l border-slate-700 text-[11px]">
               <button
                 type="button"
-                onClick={() => setActiveTab('productos')}
-                className={`hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'productos' ? 'text-emerald-400 font-bold' : 'text-slate-300'
-                }`}
-              >
-                Productos
-              </button>
-              <span aria-hidden="true" className="text-slate-700">·</span>
-              <button
-                type="button"
                 onClick={() => setActiveTab('pedidos')}
                 className={`hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                   activeTab === 'pedidos' ? 'text-emerald-400 font-bold' : 'text-slate-300'
                 }`}
               >
-                Historial Tickets
+                {isSupervisor ? 'Todos los Tickets' : 'Mis Tickets'}
               </button>
               <span aria-hidden="true" className="text-slate-700">·</span>
               <button
                 type="button"
-                onClick={() => setActiveTab('fuerza_ventas')}
+                onClick={() => setActiveTab('productos')}
                 className={`hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'fuerza_ventas' ? 'text-emerald-400 font-bold' : 'text-slate-300'
+                  activeTab === 'productos' ? 'text-emerald-400 font-bold' : 'text-slate-300'
                 }`}
               >
-                Fuerza de Ventas
+                Catálogo y Precios
               </button>
-              <span aria-hidden="true" className="text-slate-700">·</span>
-              <button
-                type="button"
-                onClick={() => setActiveTab('despliegue')}
-                className={`hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'despliegue' ? 'text-emerald-400 font-bold' : 'text-slate-300'
-                }`}
-              >
-                App & Offline/Online
-              </button>
-              <span aria-hidden="true" className="text-slate-700">·</span>
-              <button
-                type="button"
-                onClick={() => setActiveTab('configuracion')}
-                className={`hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                  activeTab === 'configuracion' ? 'text-emerald-400 font-bold' : 'text-slate-300'
-                }`}
-              >
-                Ajustes
-              </button>
+
+              {isSupervisor && (
+                <>
+                  <span aria-hidden="true" className="text-slate-700">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('fuerza_ventas')}
+                    className={`hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeTab === 'fuerza_ventas' ? 'text-emerald-400 font-bold' : 'text-slate-300'
+                    }`}
+                  >
+                    Fuerza de Ventas
+                  </button>
+                  <span aria-hidden="true" className="text-slate-700">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('despliegue')}
+                    className={`hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeTab === 'despliegue' ? 'text-emerald-400 font-bold' : 'text-slate-300'
+                    }`}
+                  >
+                    App & Offline/Online
+                  </button>
+                  <span aria-hidden="true" className="text-slate-700">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('configuracion')}
+                    className={`hover:text-white transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                      activeTab === 'configuracion' ? 'text-emerald-400 font-bold' : 'text-slate-300'
+                    }`}
+                  >
+                    Ajustes
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
